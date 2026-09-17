@@ -21,16 +21,8 @@ const allowedOrigins = ['http://localhost:5173', 'https://chat.tiflo.in'];
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (
-        !origin || 
-        allowedOrigins.includes(origin) || 
-        origin === process.env.FRONTEND_URL ||
-        /^http:\/\/localhost:\d+$/.test(origin)
-      ) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+      // Allow any origin
+      callback(null, true);
     },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
@@ -46,16 +38,8 @@ if (!fs.existsSync(uploadDir)) {
 // Middleware
 app.use(cors({
   origin: (origin, callback) => {
-    if (
-      !origin || 
-      allowedOrigins.includes(origin) || 
-      origin === process.env.FRONTEND_URL ||
-      /^http:\/\/localhost:\d+$/.test(origin)
-    ) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Allow any origin
+    callback(null, true);
   },
   credentials: true,
 }));
