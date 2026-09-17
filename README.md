@@ -34,7 +34,7 @@ This is the backend for the decoy "Class 11 PCM Study Notes & Assignment Maker" 
    - Run the schema file located in `db/schema.sql` to generate the required tables (`users`, `notes`, `messages`).
    - Create a `.env` file in the root directory:
      ```env
-     PORT=5001
+     PORT=5000
      DB_USER=postgres
      DB_PASSWORD=your_password
      DB_HOST=localhost
@@ -46,7 +46,7 @@ This is the backend for the decoy "Class 11 PCM Study Notes & Assignment Maker" 
    ```bash
    node server.js
    ```
-   The server will run on port 5001.
+   The server will run on port 5000.
 
 ## Notes on Deployment
 Make sure to configure SSL (HTTPS) for production so that the Socket.io connection isn't blocked by browsers due to mixed content. Keep the `uploads` directory writable for media storage.
