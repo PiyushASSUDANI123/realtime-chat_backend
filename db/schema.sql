@@ -36,6 +36,7 @@ CREATE TABLE messages (
     status VARCHAR(20) DEFAULT 'sent',
     is_edited BOOLEAN DEFAULT false,
     reactions JSONB DEFAULT '{}'::jsonb,
+    is_view_once BOOLEAN DEFAULT false,
     seen_at TIMESTAMP,
     sent_at TIMESTAMP DEFAULT NOW()
 );
