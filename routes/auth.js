@@ -42,4 +42,24 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// PUT /api/auth/change-password — update secret phrase
+router.put('/change-password', async (req, res) => {
+  try {
+    const { userId, newPhrase } = req.body;
+    if (!userId || !newPhrase) {
+      return res.status(400).json({ error: 'Missing userId or newPhrase' });
+    }
+    
+    await pool.query(
+      'UPDATE users SET secret_phrase = $1 WHERE id = $2',
+      [newPhrase.trim(), userId]
+    );
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Password change error:', err.message);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 module.exports = router;

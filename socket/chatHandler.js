@@ -36,7 +36,7 @@ function setupChatSocket(io) {
     // Send message
     socket.on('send_message', async (data) => {
       try {
-        const { senderId, receiverId, messageText, mediaUrl, mediaType, caption } = data;
+        const { senderId, receiverId, messageText, mediaUrl, mediaType, caption, isViewOnce } = data;
 
         // Check if receiver is online to mark as delivered
         const isReceiverOnline = Array.from(onlineUsers.values()).some(u => u.userId === receiverId);
@@ -44,10 +44,10 @@ function setupChatSocket(io) {
 
         // Save to database
         const result = await pool.query(
-          `INSERT INTO messages (sender_id, receiver_id, message_text, media_url, media_type, caption, status, sent_at) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) 
+          `INSERT INTO messages (sender_id, receiver_id, message_text, media_url, media_type, caption, status, sent_at, is_view_once) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8) 
            RETURNING *`,
-          [senderId, receiverId, messageText || null, mediaUrl || null, mediaType || null, caption || null, status]
+          [senderId, receiverId, messageText || null, mediaUrl || null, mediaType || null, caption || null, status, isViewOnce || false]
         );
 
         const savedMessage = result.rows[0];
@@ -89,6 +89,31 @@ function setupChatSocket(io) {
       }
     });
 
+    // View Once Opened
+    socket.on('view_once_opened', async ({ messageId }) => {
+      try {
+        // Find message and wait 3 seconds before deleting
+        setTimeout(async () => {
+          const result = await pool.query('SELECT media_url FROM messages WHERE id = $1', [messageId]);
+          if (result.rows.length > 0 && result.rows[0].media_url) {
+            const mediaUrl = result.rows[0].media_url;
+            if (mediaUrl.startsWith('/api/media/')) {
+              const fs = require('fs');
+              const path = require('path');
+              const filepath = path.join(__dirname, '..', 'uploads', mediaUrl.replace('/api/media/', ''));
+              if (fs.existsSync(filepath)) {
+                fs.unlinkSync(filepath);
+              }
+            }
+          }
+          await pool.query('DELETE FROM messages WHERE id = $1', [messageId]);
+          io.emit('message_deleted', { messageId });
+        }, 5000); // 5 seconds delay for view once destruction
+      } catch (err) {
+        console.error('Failed to process view_once_opened:', err.message);
+      }
+    });
+
     // Edit message
     socket.on('edit_message', async ({ messageId, newText, userId }) => {
       try {
@@ -107,11 +132,25 @@ function setupChatSocket(io) {
     // Delete message (Unsend)
     socket.on('delete_message', async ({ messageId, userId }) => {
       try {
-        const result = await pool.query(
+        // Fetch media URL before deleting if it exists
+        const result = await pool.query('SELECT media_url FROM messages WHERE id = $1 AND sender_id = $2', [messageId, userId]);
+        if (result.rows.length > 0 && result.rows[0].media_url) {
+          const mediaUrl = result.rows[0].media_url;
+          if (mediaUrl.startsWith('/api/media/')) {
+            const fs = require('fs');
+            const path = require('path');
+            const filepath = path.join(__dirname, '..', 'uploads', mediaUrl.replace('/api/media/', ''));
+            if (fs.existsSync(filepath)) {
+              fs.unlinkSync(filepath);
+            }
+          }
+        }
+
+        const deleteResult = await pool.query(
           `DELETE FROM messages WHERE id = $1 AND sender_id = $2 RETURNING id`,
           [messageId, userId]
         );
-        if (result.rowCount > 0) {
+        if (deleteResult.rowCount > 0) {
           io.emit('message_deleted', { messageId });
         }
       } catch (e) {
